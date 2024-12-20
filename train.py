@@ -8,10 +8,9 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import matplotlib.pyplot as plt
 
-def unet(input_size=(224, 224, 1)):  # Input size for grayscale images (224x224)
+def unet(input_size=(224, 224, 1)): 
     inputs = Input(input_size)
 
-    # Encoder
     c1 = Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
     c1 = Dropout(0.1)(c1)
     c1 = Conv2D(64, (3, 3), activation='relu', padding='same')(c1)
@@ -36,7 +35,6 @@ def unet(input_size=(224, 224, 1)):  # Input size for grayscale images (224x224)
     c5 = Dropout(0.3)(c5)
     c5 = Conv2D(1024, (3, 3), activation='relu', padding='same')(c5)
 
-    # Decoder
     u6 = Conv2DTranspose(512, (2, 2), strides=(2, 2), padding='same')(c5)
     u6 = concatenate([u6, c4], axis=3)
     c6 = Conv2D(512, (3, 3), activation='relu', padding='same')(u6)
@@ -69,45 +67,37 @@ def unet(input_size=(224, 224, 1)):  # Input size for grayscale images (224x224)
 
     return model
 
-# Load data function
 def load_data(image_dir, mask_dir, img_size=(224, 224)):
     images = []
     masks = []
     for img_name in os.listdir(image_dir):
         img = tf.keras.preprocessing.image.load_img(os.path.join(image_dir, img_name), target_size=img_size, color_mode='grayscale')
         img = tf.keras.preprocessing.image.img_to_array(img)
-        img = img / 255.0  # Normalize to [0, 1]
+        img = img / 255.0
         images.append(img)
 
         mask = tf.keras.preprocessing.image.load_img(os.path.join(mask_dir, img_name), target_size=img_size, color_mode='grayscale')
         mask = tf.keras.preprocessing.image.img_to_array(mask)
-        mask = mask / 255.0  # Normalize to [0, 1]
+        mask = mask / 255.0 
         masks.append(mask)
     
     return np.array(images), np.array(masks)
 
-# Paths to your image and mask directories
 image_dir = 'database'
 mask_dir = 'labels'
 
-# Load the data
 X, Y = load_data(image_dir, mask_dir)
 
-# Split the data into training and validation sets
 from sklearn.model_selection import train_test_split
 X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=0.15, random_state=42)
 
-# Instantiate the U-Net model
-model = unet(input_size=(224, 224, 1))  # Updated input size
+model = unet(input_size=(224, 224, 1))
 
-# Define callbacks
 checkpoint = ModelCheckpoint('unet_breast_segmentation.keras', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
 
-# Train the model
 history = model.fit(X_train, Y_train, validation_data=(X_val, Y_val), batch_size=8, epochs=30, callbacks=[checkpoint, early_stopping])
 
-# Plot training history
 plt.figure(figsize=(12, 6))
 plt.subplot(1, 2, 1)
 plt.plot(history.history['loss'], label='Train Loss')
